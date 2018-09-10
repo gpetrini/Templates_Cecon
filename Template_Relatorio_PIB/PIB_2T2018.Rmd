@@ -459,52 +459,61 @@ include_graphics(path = paste0("Grafico_PIB.png"))
 ```{r}
 Tabela_Resumo_Setores <- data.frame(
     "Agropecuária" = c(
-                      format(last(Trim_Trim_Anterior_xts$Agropecuaria, n = "2 quarter"), digits = 1, big.mark = ".", decimal.mark = ","),
-                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$Agropecuaria, meses = 5, digitos = 1),
+                      coredata(last(Trim_Trim_Anterior_xts$Agropecuaria, n = "2 quarter")),
+                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$Agropecuaria, 
+                                             meses = 5,
+                                             texto = FALSE),
                       FazTexto.VarMes.porc(Encade95_AjusSaz$Agropecuaria, 
-                                          meses = 4, digitos = 1),
+                                          meses = 4, 
+                                          texto = FALSE),
                       FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$Agropecuaria, 
-                                            meses = 4, digitos = 1),
+                                            meses = 4, 
+                                            texto = FALSE),
                       FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$Agropecuaria, 
-                                              digitos = 1)
+                                              texto = FALSE)
                     ),
     "Indústria" = c(
-                      format(last(Trim_Trim_Anterior_xts$`Total Industria`, n = "2 quarter"), digits = 1, big.mark = ".", decimal.mark = ","),
-                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$`Total Industria`, meses = 5, digitos = 1),
+                      coredata(last(Trim_Trim_Anterior_xts$`Total Industria`, n = "2 quarter")),
+                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$`Total Industria`, 
+                                             meses = 5,
+                                             texto = FALSE),
                       FazTexto.VarMes.porc(Encade95_AjusSaz$`Total Industria`, 
-                                          meses = 4, digitos = 1),
+                                          meses = 4, 
+                                          texto = FALSE),
                       FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$`Total Industria`, 
-                                            meses = 4, digitos = 1),
-                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$`Total Industria`, digitos = 1)
+                                            meses = 4, 
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$`Total Industria`,
+                                              texto = FALSE)
                     ),
     "Serviços" = c(
-                      format(last(Trim_Trim_Anterior_xts$`Total Servicos`, 
-                                  n = "2 quarter"), digits = 1, 
-                             big.mark = ".",
-                             decimal.mark = ","),
-                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$`Total Servicos`, meses = 5, digitos = 1),
+                      coredata(last(Trim_Trim_Anterior_xts$`Total Servicos`, 
+                                  n = "2 quarter")),
+                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$`Total Servicos`, 
+                                             meses = 5, 
+                                             texto = FALSE),
                       FazTexto.VarMes.porc(Encade95_AjusSaz$`Total Servicos`, 
-                                          meses = 4, digitos = 1),
+                                          meses = 4, 
+                                          texto = FALSE),
                       FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$`Total Servicos`, 
-                                            meses = 4, digitos = 1),
-                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$`Total Servicos`, digitos = 1)
+                                            meses = 4, 
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$`Total Servicos`,
+                                              texto = FALSE)
                     ),
     "PIB" = c(
-                      format(last(Trim_Trim_Anterior_xts$PIB, n = "2 quarter"), 
-                             digits = 1, 
-                             big.mark = ".", 
-                             decimal.mark = ",", nsmall = 1),
+                      coredata(last(Trim_Trim_Anterior_xts$PIB, n = "2 quarter")), 
                       FazTexto.ValorMesAntes(Trim_Trim_Anterior$PIB, 
                                              meses = 5, 
-                                             digitos = 1),
+                                             texto = FALSE),
                       FazTexto.VarMes.porc(Encade95_AjusSaz$PIB, 
                                           meses = 4, 
-                                          digitos = 1),
+                                          texto = FALSE),
                       FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$PIB, 
                                             meses = 4, 
-                                            digitos = 2),
+                                            texto = FALSE),
                       FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$PIB, 
-                                              digitos = 2)
+                                              texto = FALSE)
                     )
 )
 
@@ -710,22 +719,31 @@ if (is_latex_output() == TRUE) {
 ```{r}
 Tabela_Resumo_VA <- data.frame(
     "Valor Adicionado" = c(
-                      FazTexto.UltimoValor(Trim_Trim_Anterior$VA),
-                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$VA, meses = 5),
+                      coredata(last(Trim_Trim_Anterior_xts$VA,
+                                  n = "2 quarters")),
                       FazTexto.VarMes.porc(Encade95_AjusSaz$VA, 
-                                          meses = 4),
+                                          meses = 4,
+                                          texto = FALSE),
                       FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$VA, 
-                                            meses = 4),
-                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$VA)
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$VA,
+                                              texto = FALSE)
                     ),
     "PIB" = c(
-                      FazTexto.UltimoValor(Trim_Trim_Anterior$PIB),
-                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$PIB, meses = 5),
+                      FazTexto.UltimoValor(Trim_Trim_Anterior$PIB,
+                                           texto = FALSE),
+                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$PIB, 
+                                             meses = 5,
+                                             texto = FALSE),
                       FazTexto.VarMes.porc(Encade95_AjusSaz$PIB, 
-                                          meses = 4),
+                                          meses = 4,
+                                          texto = FALSE),
                       FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$PIB, 
-                                            meses = 4),
-                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$PIB)
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$PIB,
+                                              texto = FALSE)
                     )
 )
 
@@ -777,58 +795,76 @@ if (is_latex_output() == TRUE) {
 ```{r}
 Tabela_Resumo_Demanda <- data.frame(
     "Fam" = c(
-                      FazTexto.UltimoValor(Trim_Trim_Anterior$`Consumo das Familias`),
-                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$`Consumo das Familias`, meses = 5),
+                    coredata(last(Trim_Trim_Anterior_xts$`Consumo das Familias`,
+                                  n = "2 quarters")),
                       FazTexto.VarMes.porc(Encade95_AjusSaz$`Consumo das Familias`, 
-                                          meses = 4, digitos = 1),
-                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$`Consumo das Familias`, 
-                                            meses = 4),
-                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$`Consumo das Familias`)
+                                          meses = 4,
+                                          texto = FALSE),
+                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$`Consumo das Familias`,
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$`Consumo das Familias`,
+                                              texto = FALSE)
                     ),
     "Gov" = c(
-                      FazTexto.UltimoValor(Trim_Trim_Anterior$`Consumo do Governo`),
-                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$`Consumo do Governo`, meses = 5),
+                      coredata(last(Trim_Trim_Anterior_xts$`Consumo do Governo`,
+                                  n = "2 quarters")),
                       FazTexto.VarMes.porc(Encade95_AjusSaz$`Consumo do Governo`, 
-                                          meses = 4, digitos = 1),
+                                          meses = 4,
+                                          texto = FALSE),
                       FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$`Consumo do Governo`, 
-                                            meses = 4),
-                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$`Consumo do Governo`)
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$`Consumo do Governo`,
+                                              texto = FALSE)
                     ),
     "FBCF" = c(
-                      FazTexto.UltimoValor(Trim_Trim_Anterior$FBCF),
-                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$FBCF, meses = 5),
+                      coredata(last(Trim_Trim_Anterior_xts$FBCF,
+                                  n = "2 quarters")),
                       FazTexto.VarMes.porc(Encade95_AjusSaz$FBCF, 
-                                          meses = 4, digitos = 1),
+                                          meses = 4,
+                                          texto = FALSE),
                       FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$FBCF, 
-                                            meses = 4),
-                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$FBCF)
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$FBCF,
+                                              texto = FALSE)
                     ),
     "Export" = c(
-                      FazTexto.UltimoValor(Trim_Trim_Anterior$Exportacao),
-                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$Exportacao, meses = 5),
+                      coredata(last(Trim_Trim_Anterior_xts$Exportacao,
+                                  n = "2 quarters")),
                       FazTexto.VarMes.porc(Encade95_AjusSaz$Exportacao, 
-                                          meses = 4, digitos = 1),
+                                          meses = 4,
+                                          texto = FALSE),
                       FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$Exportacao, 
-                                            meses = 4),
-                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$Exportacao)
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$Exportacao,
+                                              texto = FALSE)
                     ),
     "Import" = c(
-                      FazTexto.UltimoValor(Trim_Trim_Anterior$Importacao),
-                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$Importacao, meses = 5),
+                      coredata(last(Trim_Trim_Anterior_xts$Importacao,
+                                  n = "2 quarters")),
                       FazTexto.VarMes.porc(Encade95_AjusSaz$Importacao, 
-                                          meses = 4, digitos = 1),
+                                          meses = 4,
+                                          texto = FALSE),
                       FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$Importacao, 
-                                            meses = 4),
-                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$Importacao)
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$Importacao,
+                                              texto = FALSE)
                     ),
     "PIB" = c(
-                      FazTexto.UltimoValor(Trim_Trim_Anterior$PIB),
-                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$PIB, meses = 5),
+                      coredata(last(Trim_Trim_Anterior_xts$PIB,
+                                  n = "2 quarters")),
                       FazTexto.VarMes.porc(Encade95_AjusSaz$PIB, 
-                                          meses = 4, digitos = 1),
+                                          meses = 4, 
+                                          texto = FALSE),
                       FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$PIB, 
-                                            meses = 4),
-                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$PIB)
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$PIB,
+                                              texto = FALSE)
                     )
 )
 
