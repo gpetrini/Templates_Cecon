@@ -1,0 +1,1158 @@
+---
+title: "PIB Xº Trimestre de YYYY - Template"
+author:
+- Arthur Welle
+- Gabriel Mandarino
+- Gabriel Petrini
+date: "14 de setembro de 2018"
+output:
+  html_document:
+    code_folding: show
+    highlight: textmate
+    theme: united
+    toc: yes
+    toc_float: yes
+  beamer_presentation:
+    colortheme: beaver
+    fig_caption: yes
+    fonttheme: serif
+    incremental: no
+    keep_tex: no
+    slide_level: 2
+    theme: Montpellier
+    toc: yes
+  pdf_document:
+    keep_tex: yes
+    toc: no
+  slidy_presentation:
+    incremental: no
+    df_print: paged
+    keep_md: true
+geometry: margin=1in
+lang: pt-Br
+mainfont: times
+fontsize: 11pt
+always_allow_html: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, include = FALSE)
+```
+
+```{r}
+# Carregando pacotes
+library(dplyr) # Para pipe operator %>%  (Alternativa purrr)
+library(xts) # Para objeto de séries temporais. ATENÇÂO: Dependência do pacote Cecon
+library(readxl) # Para importar xlsx. ATENÇÂO; Converter arquivos xls em xlsx manualmente
+library(knitr) # Para construi tabelas com Kable
+library(lubridate) # Para ajustar texto das datas
+library(ggplot2) # Para gerar gráficos
+library(plotly) # Para gerar gráficos dinâmicos em html
+library(processx) # Para exportar graficos do plotly
+# library(devtools) # Para instalar pacote Cecon
+# install_github("gpetrini/Cecon", "Cecon")
+library(Cecon)
+```
+
+
+```{r Uso}
+                                    #####################
+                                    # Instruções de uso #
+                                    #####################
+
+# - A pasta deve conter um único arquivo xlsx
+#     + Atenção, arquivo **deve** estar em .xlsx, caso contrário, converter manualmente
+#     + ATENÇÂO: Não alterar o arquivo .xlsx. Caso seja necessário, criar uma cópia em outro diretorio
+# - Especificar pasta em que está localizado este arquivo para salvar os gráficos de forma adequada
+# - É possível alterar a aparência global dos gráficos modificando o objeto Template_Grafico
+# - Habilitar funções plotly_IMAGE para exportar gráficos com logo do Cecon
+#     + Caso acuse erro de acesso/Usuário, entrar em contato com o mantenedor do pacote Cecon
+```
+
+
+
+
+```{r Objetos_Gerais}
+                                    ##################
+                                    # Objetos gerais #
+                                    #################
+
+###############
+#   ALTERAR   #
+###############
+
+
+###############
+#  Padrões    #
+###############
+
+# Pasta_Relatorio <- paste0(list.dirs()[2], "/") # Pasta onde está localizado o relatório. Usado para salvar graficos. Exemplo: "./PIB_2T2018/"
+
+Caminho_PIB <- paste(list.files(pattern = ".xlsx"), sep = "/")
+
+Recorte_Grafico_Fim <- 5 # Numero de  ultimos anos a serem plotados
+
+Recorte_Tabela_Fim <- 5 # Numero de ultimos trimestres para apresentar na tabela. 5 retorna a partir do mesmo trimestre do ano anterior
+
+Template_Grafico <- geom_bar(stat = "identity", # Aparência padrão do gráfico
+                             position = position_dodge(),
+                             color = "black", 
+                             fill = "dodgerblue3")
+
+#####################
+# Semi-automatizado #
+#####################
+
+#########################################################################################
+                                    ###############
+                                    # NÃO ALTERAR #
+                                    ###############
+
+### Caminho PIB
+Caminho_PIB <- Caminho_PIB %>% file.path()
+
+### Periodo artificial até 4018
+#### Periodo sera indexado com a planilha Base Movel
+Periodo_Artif <- seq( # Gera formato de datas
+                     as.Date("1996/1/1"), # Início
+                     as.Date("4018/4/1"), # Fim
+                     by = "quarter" # Trimestral
+                     )
+
+### Comandos plotly
+Sys.setenv("plotly_username" = "gpetrini")
+Sys.setenv("plotly_api_key" = "ZzKB4Hr4jf0di9IKaFFU")
+
+
+
+Colunas_Contas_Nacionais <- c("Periodo", # Nome das colunas. ATENÇÂO: Planilhas 7, 8, 11
+                              "Agropecuaria",
+                              "Industria Extrativa",
+                              "Industria de Transformacao",
+                              "Eletricidade e agua",
+                              "Construcao",
+                              "Total Industria",
+                              "Comercio",
+                              "Transporte, armazenagem e correio",
+                              "Informacao e comunicacao",
+                              "Atividades Financeiras",
+                              "Atividades Imobiliarias",
+                              "Outras atividades",
+                              "ADM, defesa, etc",
+                              "Total Servicos",
+                              "VA",
+                              "PIB",
+                              "Consumo das Familias",
+                              "Consumo do Governo",
+                              "FBCF",
+                              "Exportacao",
+                              "Importacao")
+
+
+Colunas_Contas_Nacionais_Imposto <- c("Periodo", # Nome das colunas. ATENÇÂO: Planilhas 1-6 e 10
+                              "Agropecuaria",
+                              "Industria Extrativa",
+                              "Industria de Transformacao",
+                              "Eletricidade e agua",
+                              "Construcao",
+                              "Total Industria",
+                              "Comercio",
+                              "Transporte, armazenagem e correio",
+                              "Informacao e comunicacao",
+                              "Atividades Financeiras",
+                              "Atividades Imobiliarias",
+                              "Outras atividades",
+                              "ADM, defesa, etc",
+                              "Total Servicos",
+                              "VA",
+                              "Imposto",
+                              "PIB",
+                              "Consumo das Familias",
+                              "Consumo do Governo",
+                              "FBCF",
+                              "Exportacao",
+                              "Importacao")
+
+Colunas_Contas_Nacionais_Precos_Correntes <- c("Periodo", # Nome das colunas. ATENÇÂO: Planilha 9
+                              "Agropecuaria",
+                              "Industria Extrativa",
+                              "Industria de Transformacao",
+                              "Eletricidade e agua",
+                              "Construcao",
+                              "Total Industria",
+                              "Comercio",
+                              "Transporte, armazenagem e correio",
+                              "Informacao e comunicacao",
+                              "Atividades Financeiras",
+                              "Atividades Imobiliarias",
+                              "Outras atividades",
+                              "ADM, defesa, etc",
+                              "Total Servicos",
+                              "VA",
+                              "Imposto",
+                              "PIB",
+                              "Consumo das Familias",
+                              "Consumo do Governo",
+                              "FBCF",
+                              "Variação de Estoques",
+                              "Exportacao",
+                              "Importacao")
+```
+
+```{r Base_Movel}
+# ÍNDICE BASE MÓVEL TRIMESTRAL  (Planilha 1)
+Base_Movel <- read_excel(Caminho_PIB, # Importando dados
+                                 sheet = 1, 
+                                 col_names = FALSE, skip = 4)
+
+
+
+Periodo <- Periodo_Artif[1:nrow(Base_Movel[,1])] # Importante: Define a adequação dos periodos
+Periodo <- as.Date(Periodo)
+
+Periodo_qtr <- paste0(year(Periodo), " ", quarters(x = Periodo, abbreviate = "T")) # Transofrma data em YYYY Q1
+
+Anos_Tabela <- c(tail(Periodo_qtr, n = Recorte_Tabela_Fim))  # Para apresentar últimos 4 trimestres
+
+colnames(Base_Movel) <- Colunas_Contas_Nacionais_Imposto # Renomeando colunas
+Base_Movel[ , 1] <- Periodo # Ajustando datas ao R
+
+# Convertendo em xts
+Base_Movel_xts <- ajuste_xts(dados = Base_Movel, 
+                                      col_data = 1, 
+                                      col_dados = c(2:23))
+
+Recorte_Grafico_Texto <- paste(Recorte_Grafico_Fim, "years", sep = " ")
+Recorte_Grafico_proxy <- last(Base_Movel_xts, Recorte_Grafico_Texto)
+Recorte_Grafico <- paste(first(index(Recorte_Grafico_proxy)),
+                         last(index(Recorte_Grafico_proxy)), 
+                         sep = "/")
+
+Recorte_Tabela_Texto <- paste(Recorte_Tabela_Fim, "quarters", sep = " ")
+Recorte_Tabela_proxy <- (last(Base_Movel_xts, Recorte_Tabela_Texto))
+Recorte_Tabela <- paste(first(index(Recorte_Tabela_proxy)),
+                         last(index(Recorte_Tabela_proxy)), 
+                         sep = "/")
+
+# tail(Base_Movel_xts) # Apenas para checagem
+```
+
+
+```{r Serie_Encadeada}
+# ÍNDICE BASE MÓVEL TRIMESTRAL  (Planilha 2)
+Serie_Encadeada <- read_excel(Caminho_PIB, # Importando dados
+                                 sheet = 2, 
+                                 col_names = FALSE, skip = 4)
+colnames(Serie_Encadeada) <- Colunas_Contas_Nacionais_Imposto # Renomeando colunas
+Serie_Encadeada[ , 1] <- Periodo # Ajustando datas ao R
+
+# Convertendo em xts
+Serie_Encadeada_xts <- ajuste_xts(dados = Serie_Encadeada, 
+                                      col_data = 1, 
+                                      col_dados = c(2:23))
+# tail(Serie_Encadeada_xts) # Apenas para checagem
+```
+
+```{r Taxa_Trim}
+# TAXA TRIMESTRAL   (Planilha 3)
+Taxa_Trim <- read_excel(Caminho_PIB, # Importando dados
+                                 sheet = 3, 
+                                 col_names = FALSE, skip = 4)
+colnames(Taxa_Trim) <- Colunas_Contas_Nacionais_Imposto # Renomeando colunas
+Taxa_Trim[ , 1] <- Periodo # Ajustando datas ao R
+
+# Convertendo em xts
+Taxa_Trim_xts <- ajuste_xts(dados = Taxa_Trim, 
+                                      col_data = 1, 
+                                      col_dados = c(2:23))
+# tail(Taxa_Trim_xts) # Apenas para checagem
+```
+
+```{r Acum_4T}
+# TAXA ACUMULADA EM QUATRO TRIMESTRES (em relação ao  mesmo período do ano anterior % )    (Planilha 4)
+Acum_4T <- read_excel(Caminho_PIB, # Importando dados
+                                 sheet = 4, 
+                                 col_names = FALSE, skip = 4)
+colnames(Acum_4T) <- Colunas_Contas_Nacionais_Imposto # Renomeando colunas
+Acum_4T[ , 1] <- Periodo # Ajustando datas ao R
+
+# Convertendo em xts
+Acum_4T_xts <- ajuste_xts(dados = Acum_4T, 
+                                      col_data = 1, 
+                                      col_dados = c(2:23))
+# tail(Acum_4T_xts) # Apenas para checagem
+```
+
+```{r Acum_Ano}
+# TAXA ACUMULADA AO LONGO DO ANO  (Planilha 5)
+Acum_Ano <- read_excel(Caminho_PIB, # Importando dados
+                                 sheet = 5, 
+                                 col_names = FALSE, skip = 4)
+colnames(Acum_Ano) <- Colunas_Contas_Nacionais_Imposto # Renomeando colunas
+Acum_Ano[ , 1] <- Periodo # Ajustando datas ao R
+
+# Convertendo em xts
+Acum_Ano_xts <- ajuste_xts(dados = Acum_Ano, 
+                                      col_data = 1, 
+                                      col_dados = c(2:23))
+# tail(Acum_Ano_xts) # Apenas para checagem
+```
+
+```{r Acum_Semestre}
+# TAXA ACUMULADA EM DOIS TRIMESTRES   (Planilha 6)
+Acum_Semestre <- read_excel(Caminho_PIB, # Importando dados
+                                 sheet = 6, 
+                                 col_names = FALSE, skip = 4)
+colnames(Acum_Semestre) <- Colunas_Contas_Nacionais_Imposto # Renomeando colunas
+Acum_Semestre[ , 1] <- Periodo # Ajustando datas ao R
+
+# Convertendo em xts
+Acum_Semestre_xts <- ajuste_xts(dados = Acum_Semestre, 
+                                      col_data = 1, 
+                                      col_dados = c(2:23))
+# tail(Acum_Semestre_xts) # Apenas para checagem
+```
+
+```{r Trim_AjustSaz}
+# SÉRIE ENCADEADA DO ÍNDICE DE VOLUME TRIMESTRAL COM AJUSTE SAZONAL (Planilha 7)
+Trim_AjustSaz <- read_excel(Caminho_PIB, # Importando dados
+                                 sheet = 7, 
+                                 col_names = FALSE, skip = 4)
+colnames(Trim_AjustSaz) <- Colunas_Contas_Nacionais # Renomeando colunas
+Trim_AjustSaz[ , 1] <- Periodo # Ajustando datas ao R
+Trim_AjustSaz[ , 23] <- NULL # Eliminando coluna em branco
+
+# Convertendo em xts
+Trim_AjustSaz_xts <- ajuste_xts(dados = Trim_AjustSaz, 
+                                      col_data = 1, 
+                                      col_dados = c(2:22))
+# tail(Trim_AjustSaz_xts) # Apenas para checagem
+```
+
+
+```{r Trim_Trim_Anterior}
+# Trimestre contra trimestre anterior (planilha 8)
+Trim_Trim_Anterior <- read_excel(Caminho_PIB, # Importando dados
+                                 sheet = 8, 
+                                 col_names = FALSE, skip = 4)
+colnames(Trim_Trim_Anterior) <- Colunas_Contas_Nacionais # Renomeando colunas
+Trim_Trim_Anterior[ , 1] <- Periodo # Ajustando datas ao R
+Trim_Trim_Anterior[ , 23] <- NULL # Eliminando coluna em branco
+
+# Convertendo em xts
+Trim_Trim_Anterior_xts <- ajuste_xts(dados = Trim_Trim_Anterior, 
+                                      col_data = 1, 
+                                      col_dados = c(2:22))
+#head(Trim_Trim_Anterior_xts) # Apenas para checagem
+```
+
+```{r Valor_Corrente}
+# # VALORES CORRENTES (planilha 9) # TODO
+# #### Atenção Repete anos cheios
+Anos_Cheios <- seq( # Gera formato de datas
+                     as.Date("1995/1/1"), # Início
+                     as.Date("4018/4/1"), # Fim
+                     by = "year" # Trimestral
+                     )
+Anos_Cheios <- format(as.Date(Anos_Cheios), "%Y")
+Valor_Corrente_Bruto <- read_excel(Caminho_PIB, # Importando dados
+                                 sheet = 9,
+                                 col_names = FALSE, skip = 4)
+colnames(Valor_Corrente_Bruto) <- Colunas_Contas_Nacionais_Precos_Correntes # Renomeando colunas
+Anos_Cheios_Valor_Corrente <- Valor_Corrente_Bruto$Periodo %in% Anos_Cheios  
+Valor_Corrente_Anos_Cheios <- Valor_Corrente_Bruto[Anos_Cheios_Valor_Corrente,]
+Valor_Corrente <- Valor_Corrente_Bruto[!Anos_Cheios_Valor_Corrente,]
+Valor_Corrente[ , 1] <- Periodo # Ajustando datas ao R T
+
+# Convertendo em xts
+Valor_Corrente_xts <- ajuste_xts(dados = Valor_Corrente,
+                                      col_data = 1,
+                                      col_dados = c(2:24))
+#head(Valor_Corrente_xts) # Apenas para checagem
+```
+
+```{r Encade95}
+# VALORES ENCADEADOS A PREÇOS DE 1995 (Planila 10)
+Encade95 <- read_excel(Caminho_PIB, # Importando dados
+                       sheet = 10,
+                       col_names = FALSE,
+                       skip = 4)
+colnames(Encade95) <- Colunas_Contas_Nacionais_Imposto # Renomeando colunas
+Encade95[, 1] <- Periodo # Ajustando datas ao R
+
+Encade95_xts <- ajuste_xts(dados = Encade95, # Convertendo em xts
+                           col_data = 1,
+                           col_dados = c(2:23))
+# tail(Encade95_xts) # Apenas para checagem
+```
+
+```{r Encade95_AjusSaz}
+# VALORES ENCADEADOS A PREÇOS DE 1995 COM AJUSTE (Planila 11)
+Encade95_AjusSaz <- read_excel(Caminho_PIB, # Importando dados
+                               sheet = 11, 
+                               col_names = FALSE, 
+                               skip = 4)
+colnames(Encade95_AjusSaz) <- Colunas_Contas_Nacionais # Renomeando colunas
+Encade95_AjusSaz[, 1] <- Periodo # Ajustando datas ao R
+
+Encade95_AjusSaz_xts <- ajuste_xts(dados = Encade95_AjusSaz, # Convertendo em xts
+                                                  col_data = 1,
+                                                  col_dados = c(2:22))
+#head(Encade95_AjusSaz_xts) # Apenas para checagem
+```
+
+# PIB
+
+## Tabela Resumo[^1]
+
+```{r}
+Tabela_Resumo <- data.frame(
+    Acum_Ano_xts$PIB[Recorte_Tabela],
+    Acum_4T_xts$PIB[Recorte_Tabela],
+    Taxa_Trim_xts$PIB[Recorte_Tabela],
+    Trim_Trim_Anterior_xts$PIB[Recorte_Tabela]
+    )
+Tabela_Resumo <- t(Tabela_Resumo)
+rownames(Tabela_Resumo) <- c("Acum. ano",
+                             "Acum. 4 trim.",
+                             "Ano ant.",
+                             "Trim. ant.")
+colnames(Tabela_Resumo) <- Anos_Tabela
+
+# head(Tabela_Resumo) # Apenas para a checagem
+```
+
+```{r html_table, results= 'asis', include=TRUE, echo=FALSE, size="3cm"}
+kable(x = Tabela_Resumo,
+      digits = 1,
+      caption = "Resultados PIB a preços de mercado", format.args = list(big.mark = ".",
+                                                                   decimal.mark = ","))
+```
+
+
+## Trimestre / trimestre imediatamente anterior (com ajuste sazonal) 
+
+```{r}
+Grafico_PIB <-  grafico_cecon(Trim_Trim_Anterior_xts$PIB[Recorte_Grafico], 
+                              tipo_grafico = Template_Grafico, 
+                              pontos = 0)
+# plotly_IMAGE(x = Grafico_PIB, # Habilitar para exportar grafico. Atencao output pdf/beamer
+#              out_file = paste0("Grafico_PIB.png"),
+#              format = "png",
+#              scale = 1)
+```
+
+```{r Grafico_PIB, include=TRUE, echo=FALSE, results='asis', fig.keep='all', out.width = '100%', fig.align="center"}
+if (is_latex_output() == TRUE) {
+include_graphics(path = paste0("Grafico_PIB.png"))
+} else
+{
+    Grafico_PIB
+}
+```
+
+
+# PIB Setorial
+
+## Tabela Resumo - Oferta[^2]
+
+```{r}
+Tabela_Resumo_Setores <- data.frame(
+    "Agropecuária" = c(
+                      coredata(last(Trim_Trim_Anterior_xts$Agropecuaria, n = "2 quarter")),
+                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$Agropecuaria, 
+                                             meses = 5,
+                                             texto = FALSE),
+                      FazTexto.VarMes.porc(Encade95_AjusSaz$Agropecuaria, 
+                                          meses = 4, 
+                                          texto = FALSE),
+                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$Agropecuaria, 
+                                            meses = 4, 
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$Agropecuaria, 
+                                              texto = FALSE)
+                    ),
+    "Indústria" = c(
+                      coredata(last(Trim_Trim_Anterior_xts$`Total Industria`, n = "2 quarter")),
+                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$`Total Industria`, 
+                                             meses = 5,
+                                             texto = FALSE),
+                      FazTexto.VarMes.porc(Encade95_AjusSaz$`Total Industria`, 
+                                          meses = 4, 
+                                          texto = FALSE),
+                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$`Total Industria`, 
+                                            meses = 4, 
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$`Total Industria`,
+                                              texto = FALSE)
+                    ),
+    "Serviços" = c(
+                      coredata(last(Trim_Trim_Anterior_xts$`Total Servicos`, 
+                                  n = "2 quarter")),
+                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$`Total Servicos`, 
+                                             meses = 5, 
+                                             texto = FALSE),
+                      FazTexto.VarMes.porc(Encade95_AjusSaz$`Total Servicos`, 
+                                          meses = 4, 
+                                          texto = FALSE),
+                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$`Total Servicos`, 
+                                            meses = 4, 
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$`Total Servicos`,
+                                              texto = FALSE)
+                    ),
+    "PIB" = c(
+                      coredata(last(Trim_Trim_Anterior_xts$PIB, n = "2 quarter")), 
+                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$PIB, 
+                                             meses = 5, 
+                                             texto = FALSE),
+                      FazTexto.VarMes.porc(Encade95_AjusSaz$PIB, 
+                                          meses = 4, 
+                                          texto = FALSE),
+                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$PIB, 
+                                            meses = 4, 
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$PIB, 
+                                              texto = FALSE)
+                    )
+)
+
+
+rownames(Tabela_Resumo_Setores) <- c("Valor anterior",
+                                     "Último Valor",
+                                     "12 meses anteriores",
+                                     "Variação percentual",
+                                     "Taxa acumulada",
+                                     "Taxa anualizada")
+colnames(Tabela_Resumo_Setores) <- c("Agropecuária",
+                                     "Indústria",
+                                     "Serviços",
+                                     "PIB")
+```
+
+```{r Tabela_Resumo_Setores, results= 'asis', include=TRUE, echo=FALSE}
+kable(Tabela_Resumo_Setores, 
+      digits = 1, 
+      caption = "Tabela resumo - Oferta", format.args = list(big.mark = ".",
+                                                                   decimal.mark = ","),
+      align = "r")
+```
+
+## Comparação trimestral - Oferta
+
+```{r}
+Dados_Grafico_Setores <- data.frame(
+    "Setores" = c(
+        "Agropecuária",
+        "Indústria",
+        "Serviços",
+        "PIB"
+    ),
+    "Valor" = c(
+        last(Trim_Trim_Anterior_xts$Agropecuaria, n = "2 quarter"),
+        last(Trim_Trim_Anterior_xts$`Total Industria`, n = "2 quarter"),
+        last(Trim_Trim_Anterior_xts$`Total Servicos`, n = "2 quarter"),
+        last(Trim_Trim_Anterior_xts$PIB, n = "2 quarter")
+    ),
+    row.names = NULL
+)
+
+colnames(Dados_Grafico_Setores) <- c("Setores", "Valores")
+
+Dados_Grafico_Setores <- Dados_Grafico_Setores %>% 
+    mutate(Periodo = c(rep(Periodo_qtr[length(Periodo_qtr) - 1], times = 4),
+                       rep(Periodo_qtr[length(Periodo_qtr)], times = 4)))
+
+Grafico_Setores <- ggplot(data = Dados_Grafico_Setores, 
+                          aes(x = Dados_Grafico_Setores$Setores,
+                              y = Dados_Grafico_Setores$Valores,
+                              fill = factor(Dados_Grafico_Setores$Periodo))) +
+    geom_bar(stat = "identity", 
+             position = position_dodge(width = 0.9), color = "black") +
+    scale_fill_brewer(palette = "Paired", "Trimestre") +
+    # geom_text(aes(label = round(Dados_Grafico_Setores$Ultimos, digits = 1)), 
+    #           vjust = 0, 
+    #           color = "black",
+    #           position = position_dodge(0.9), 
+    #           size = 4) +
+    theme_classic() + 
+    scale_y_continuous(breaks = seq(-2,2, 0.25)) +
+    scale_x_discrete(labels = c("Agropecuária",
+                                "Indústria",
+                                "Serviços",
+                                "PIB")) +
+    labs(x = NULL, y = NULL, title = NULL) +
+    theme(panel.border = element_blank(), 
+        axis.line = element_line(colour = "black", size = 0.7), 
+        axis.text.y = element_text(angle = 0, 
+            hjust = 0, vjust = 0.5, size = 14), 
+        axis.text.x = element_text(angle = 0, 
+            hjust = 0.5, vjust = 0, size = 16),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 14),
+        text = element_text(size = 10, 
+            family = "TT Times New Roman")) +
+    geom_hline(yintercept = 0)
+
+Grafico_Setores <- Grafico_Setores %>% add_logo()
+# plotly_IMAGE(x = Grafico_Setores, # Habilitar para exportar grafico. Atencao output pdf/beamer
+#              out_file = paste0("Grafico_Setores.png"),
+#              format = "png",
+#              scale = 1)
+```
+
+```{r Grafico_Setores, include=TRUE, echo=FALSE, results='asis', fig.keep='all', out.width = '100%', fig.align="center"}
+if (is_latex_output() == TRUE) {
+include_graphics(path = paste0("Grafico_Setores.png"))
+} else
+{
+    Grafico_Setores
+}
+```
+
+```{r}
+Serie_Decomposicao_Oferta <- Encade95_AjusSaz_xts
+
+Decomp_Agro <- diff(Serie_Decomposicao_Oferta$Agropecuaria)/Serie_Decomposicao_Oferta$PIB
+
+Decomp_Indust <- diff(Serie_Decomposicao_Oferta$`Total Industria`)/Serie_Decomposicao_Oferta$PIB
+
+Decomp_Serv <- diff(Serie_Decomposicao_Oferta$`Total Servicos`)/Serie_Decomposicao_Oferta$PIB
+
+Decomp_PIB <- diff(Serie_Decomposicao_Oferta$PIB)/Serie_Decomposicao_Oferta$PIB
+```
+
+
+```{r}
+# Tabela Decomposição
+Decomposicao <- data.frame(
+    "Agropecuária" = Decomp_Agro[Recorte_Tabela]*100,
+    "Indústria" = Decomp_Indust[Recorte_Tabela]*100,
+    "Serviços" = Decomp_Serv[Recorte_Tabela]*100,
+    "PIB" = Decomp_PIB[Recorte_Tabela]*100
+    )
+
+Decomposicao_Tabela <- t(Decomposicao)
+
+colnames(Decomposicao_Tabela) <- Anos_Tabela
+rownames(Decomposicao_Tabela) <- c("Agropecuária", "Indústria", "Serviços", "PIB")
+```
+
+## Decomposição - Oferta
+
+```{r Decomposicao_Tabela, results= 'asis', include=TRUE, echo=FALSE}
+kable(Decomposicao_Tabela, 
+      digits = 2, 
+      caption = "Contribuição ao PIB - Oferta", format.args = list(big.mark = ".",
+                                                                   decimal.mark = ","))
+```
+
+
+## Agropecuária
+
+```{r}
+Grafico_Agro <- grafico_cecon(Trim_Trim_Anterior_xts$Agropecuaria[Recorte_Grafico], 
+                              tipo_grafico = Template_Grafico)
+# plotly_IMAGE(x = Grafico_Agro, # Habilitar para exportar grafico. Atencao output pdf/beamer
+#              out_file = paste0("Grafico_Agro.png"),
+#              format = "png",
+#              scale = 1)
+```
+
+
+
+```{r Grafico_Agro, include=TRUE, echo=FALSE, results='asis', fig.keep='all', out.width = '100%', fig.align="center"}
+if (is_latex_output() == TRUE) {
+include_graphics(path = paste0("Grafico_Agro.png"))
+} else
+{
+    Grafico_Agro
+}
+```
+
+
+
+## Indústria
+
+```{r}
+Grafico_Industria <- grafico_cecon(Trim_Trim_Anterior_xts$`Total Industria`[Recorte_Grafico],
+                                   tipo_grafico = Template_Grafico)
+# plotly_IMAGE(x = Grafico_Industria, # Dosar uso
+#              out_file = paste0("Grafico_Industria.png"),
+#              format = "png",
+#              scale = 1)
+```
+
+```{r Grafico_Industria, include=TRUE, echo=FALSE, results='asis', fig.keep='all', out.width = '100%', fig.align="center"}
+if (is_latex_output() == TRUE) {
+include_graphics(path = paste0("Grafico_Industria.png"))
+} else
+{
+    Grafico_Industria
+}
+```
+
+## Serviços
+
+```{r}
+Grafico_Servicos <- grafico_cecon(Trim_Trim_Anterior_xts$`Total Servicos`[Recorte_Grafico], 
+                                  tipo_grafico = Template_Grafico)
+# plotly_IMAGE(x = Grafico_Servicos, # Dosar uso
+#              out_file = paste0("Grafico_Servicos.png"),
+#              format = "png",
+#              scale = 1)
+```
+
+```{r Grafico_Servicos, include=TRUE, echo=FALSE, results='asis', fig.keep='all', out.width = '100%', fig.align="center"}
+
+if (is_latex_output() == TRUE) {
+    include_graphics( paste0("Grafico_Servicos.png"))    
+} else {
+    Grafico_Servicos
+}
+```
+
+# Valor Adicionado
+
+## Valor Adicionado - Resumo[^3]
+
+```{r}
+Tabela_Resumo_VA <- data.frame(
+    "Valor Adicionado" = c(
+                      coredata(last(Trim_Trim_Anterior_xts$VA,
+                                  n = "2 quarters")),
+                      FazTexto.VarMes.porc(Encade95_AjusSaz$VA, 
+                                          meses = 4,
+                                          texto = FALSE),
+                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$VA, 
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$VA,
+                                              texto = FALSE)
+                    ),
+    "PIB" = c(
+                      FazTexto.UltimoValor(Trim_Trim_Anterior$PIB,
+                                           texto = FALSE),
+                      FazTexto.ValorMesAntes(Trim_Trim_Anterior$PIB, 
+                                             meses = 5,
+                                             texto = FALSE),
+                      FazTexto.VarMes.porc(Encade95_AjusSaz$PIB, 
+                                          meses = 4,
+                                          texto = FALSE),
+                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$PIB, 
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$PIB,
+                                              texto = FALSE)
+                    )
+)
+
+
+rownames(Tabela_Resumo_VA) <- c("Valor anterior",
+                                     "12 meses anteriores",
+                                     "Variação percentual",
+                                     "Taxa acumulada",
+                                     "Taxa anualizada")
+colnames(Tabela_Resumo_VA) <- c("Valor Adicionado",
+                                     "PIB")
+```
+
+```{r Tabela_Resumo_VA, results= 'asis', include=TRUE, echo=FALSE}
+kable(Tabela_Resumo_VA, 
+      digits = 1, 
+      caption = "Tabela resumo - Valor Adicionado", format.args = list(big.mark = ".",
+                                                                   decimal.mark = ","),
+      align = "r")
+```
+
+
+## Valor Adicionado
+
+```{r}
+Grafico_VA <- grafico_cecon(Trim_Trim_Anterior_xts$VA[Recorte_Grafico], 
+                            tipo_grafico = Template_Grafico)
+# plotly_IMAGE(x = Grafico_VA, # Dosar uso
+#              out_file = paste0("Grafico_VA.png"),
+#              format = "png",
+#              scale = 1)
+```
+
+```{r Grafico_VA, include=TRUE, echo=FALSE, results='asis', fig.keep='all', out.width = '100%', fig.align="center"}
+
+if (is_latex_output() == TRUE) {
+    include_graphics( paste0("Grafico_VA.png"))    
+} else {
+    Grafico_VA
+}
+```
+
+
+# Demanda
+
+
+## Tabela Resumo - Demanda[^4]
+
+```{r}
+Tabela_Resumo_Demanda <- data.frame(
+    "Fam" = c(
+                    coredata(last(Trim_Trim_Anterior_xts$`Consumo das Familias`,
+                                  n = "2 quarters")),
+                      FazTexto.VarMes.porc(Encade95_AjusSaz$`Consumo das Familias`, 
+                                          meses = 4,
+                                          texto = FALSE),
+                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$`Consumo das Familias`,
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$`Consumo das Familias`,
+                                              texto = FALSE)
+                    ),
+    "Gov" = c(
+                      coredata(last(Trim_Trim_Anterior_xts$`Consumo do Governo`,
+                                  n = "2 quarters")),
+                      FazTexto.VarMes.porc(Encade95_AjusSaz$`Consumo do Governo`, 
+                                          meses = 4,
+                                          texto = FALSE),
+                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$`Consumo do Governo`, 
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$`Consumo do Governo`,
+                                              texto = FALSE)
+                    ),
+    "FBCF" = c(
+                      coredata(last(Trim_Trim_Anterior_xts$FBCF,
+                                  n = "2 quarters")),
+                      FazTexto.VarMes.porc(Encade95_AjusSaz$FBCF, 
+                                          meses = 4,
+                                          texto = FALSE),
+                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$FBCF, 
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$FBCF,
+                                              texto = FALSE)
+                    ),
+    "Export" = c(
+                      coredata(last(Trim_Trim_Anterior_xts$Exportacao,
+                                  n = "2 quarters")),
+                      FazTexto.VarMes.porc(Encade95_AjusSaz$Exportacao, 
+                                          meses = 4,
+                                          texto = FALSE),
+                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$Exportacao, 
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$Exportacao,
+                                              texto = FALSE)
+                    ),
+    "Import" = c(
+                      coredata(last(Trim_Trim_Anterior_xts$Importacao,
+                                  n = "2 quarters")),
+                      FazTexto.VarMes.porc(Encade95_AjusSaz$Importacao, 
+                                          meses = 4,
+                                          texto = FALSE),
+                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$Importacao, 
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$Importacao,
+                                              texto = FALSE)
+                    ),
+    "PIB" = c(
+                      coredata(last(Trim_Trim_Anterior_xts$PIB,
+                                  n = "2 quarters")),
+                      FazTexto.VarMes.porc(Encade95_AjusSaz$PIB, 
+                                          meses = 4, 
+                                          texto = FALSE),
+                      FazTexto.TaxaAccMeses(x = Trim_Trim_Anterior$PIB, 
+                                            meses = 4,
+                                            texto = FALSE),
+                      FazTexto.TaxaAnualizada(x = Trim_Trim_Anterior$PIB,
+                                              texto = FALSE)
+                    )
+)
+
+
+rownames(Tabela_Resumo_Demanda) <- c("Valor anterior",
+                                     "12 meses anteriores",
+                                     "Variação percentual",
+                                     "Taxa acumulada",
+                                     "Taxa anualizada")
+colnames(Tabela_Resumo_Demanda) <- c("Fam",
+                                     "Gov",
+                                     "FBCF",
+                                     "Exp",
+                                     "Imp",
+                                     "PIB")
+```
+
+```{r Tabela_Resumo_Demanda, results= 'asis', include=TRUE, echo=FALSE}
+kable(Tabela_Resumo_Demanda, 
+      digits = 1, 
+      caption = "Tabela resumo - Demanda", format.args = list(big.mark = ".",
+                                                                   decimal.mark = ","),
+      align = "r")
+```
+
+## Comparação trimestral - Demanda
+
+```{r Demanda_Comp}
+Dados_Grafico_Demanda <- data.frame(
+    "Demanda" = c(
+        "Famílias",
+        "FBCF",
+        "Governo",
+        "Exportação",
+        "Importação",
+        "PIB"
+    ),
+    "Valor" = c(
+        last(Trim_Trim_Anterior_xts$`Consumo das Familias`, n = "2 quarter"),
+        last(Trim_Trim_Anterior_xts$FBCF, n = "2 quarter"),
+        last(Trim_Trim_Anterior_xts$`Consumo do Governo`, n = "2 quarter"),
+        last(Trim_Trim_Anterior_xts$Exportacao, n = "2 quarter"),
+        last(Trim_Trim_Anterior_xts$Importacao, n = "2 quarter"),
+        last(Trim_Trim_Anterior_xts$PIB, n = "2 quarter")
+    ),
+    row.names = NULL
+)
+
+colnames(Dados_Grafico_Demanda) <- c("Demanda", "Valores")
+
+Dados_Grafico_Demanda <- Dados_Grafico_Demanda %>% 
+    mutate(Periodo = c(rep(Periodo_qtr[length(Periodo_qtr) - 1], times = 6),
+                       rep(Periodo_qtr[length(Periodo_qtr)], times = 6)))
+
+Grafico_Demanda <- ggplot(data = Dados_Grafico_Demanda, 
+                          aes(x = Dados_Grafico_Demanda$Demanda,
+                              y = Dados_Grafico_Demanda$Valores,
+                              fill = factor(Dados_Grafico_Demanda$Periodo))) +
+    geom_bar(stat = "identity", 
+             position = position_dodge(width = 0.9), color = "black") +
+    scale_fill_brewer(palette = "Paired", "Trimestre") +
+    theme_classic() + 
+    scale_y_continuous(breaks = seq(-10,2, 0.5)) +
+    scale_x_discrete(labels = c("Famílias",
+                                "FBCF",
+                                "Governo",
+                                "Exportação",
+                                "Importação",
+                                "PIB")) +
+    labs(x = NULL, y = NULL, title = NULL) +
+    theme(panel.border = element_blank(), 
+        axis.line = element_line(colour = "black", size = 0.7), 
+        axis.text.y = element_text(angle = 0, 
+            hjust = 0, vjust = 0.5, size = 14), 
+        axis.text.x = element_text(angle = 0, 
+            hjust = 0.5, vjust = 0, size = 14),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 14),
+        text = element_text(size = 10, 
+            family = "TT Times New Roman")) +
+    geom_hline(yintercept = 0)
+
+Grafico_Demanda <- Grafico_Demanda %>% add_logo()
+# plotly_IMAGE(x = Grafico_Demanda, # Habilitar para exportar grafico. Atencao output pdf/beamer
+#              out_file = paste0("Grafico_Demanda.png"),
+#              format = "png",
+#              scale = 1)
+```
+
+
+```{r Grafico_Demanda, include=TRUE, echo=FALSE, results='asis', fig.keep='all', out.width = '100%', fig.align="center"}
+if (is_latex_output() == TRUE) {
+include_graphics(path = paste0("Grafico_Demanda.png"))
+} else
+{
+    Grafico_Demanda
+}
+```
+
+## Decomposição - Demanda
+
+```{r}
+Serie_Decomposicao_Demanda <- Encade95_AjusSaz_xts
+
+Decomp_CFam <- diff(Serie_Decomposicao_Demanda$`Consumo das Familias`)/Serie_Decomposicao_Demanda$PIB
+
+Decomp_CGov <- diff(Serie_Decomposicao_Demanda$`Total Industria`)/Serie_Decomposicao_Demanda$PIB
+
+Decomp_FBCF <- diff(Serie_Decomposicao_Demanda$FBCF)/Serie_Decomposicao_Demanda$PIB
+
+Decomp_Exp <- diff(Serie_Decomposicao_Demanda$Exportacao)/Serie_Decomposicao_Demanda$PIB
+
+Decomp_Imp <- diff(Serie_Decomposicao_Demanda$Importacao)/Serie_Decomposicao_Demanda$PIB
+
+Decomp_PIB <- diff(Serie_Decomposicao_Demanda$PIB)/Serie_Decomposicao_Demanda$PIB
+```
+
+
+```{r}
+# Tabela Decomposição
+Decomposicao_Demanda <- data.frame(
+    "Famílias" = Decomp_CFam[Recorte_Tabela]*100,
+    "FBCF" = Decomp_FBCF[Recorte_Tabela]*100,
+    "Governo" = Decomp_CGov[Recorte_Tabela]*100,
+    "Exportações" = Decomp_Exp[Recorte_Tabela]*100,
+    "Importações" = Decomp_Imp[Recorte_Tabela]*100,
+    "PIB" = Decomp_PIB[Recorte_Tabela]*100
+    )
+
+Decomposicao_Tabela_Demanda <- t(Decomposicao_Demanda)
+
+colnames(Decomposicao_Tabela_Demanda) <- Anos_Tabela
+rownames(Decomposicao_Tabela_Demanda) <- c("Famílias", 
+                                           "FBCF", 
+                                           "Governo",
+                                           "Exportações",
+                                           "Importações",
+                                           "PIB")
+```
+
+
+```{r Decomposicao_Tabela_Demanda, results= 'asis', include=TRUE, echo=FALSE}
+kable(Decomposicao_Tabela_Demanda, 
+      digits = 2, 
+      caption = "Contribuição ao PIB - Demanda (sem variação de estoques)", format.args = list(big.mark = ".",
+                                                                   decimal.mark = ","))
+```
+
+## Consumo das Famílias
+
+```{r}
+Grafico_CFam <- grafico_cecon(Trim_Trim_Anterior_xts$`Consumo das Familias`[Recorte_Grafico], 
+                              tipo_grafico = Template_Grafico)
+# plotly_IMAGE(x = Grafico_CFam, # Dosar uso
+#              out_file = paste0("Grafico_CFam.png"),
+#              format = "png",
+#              scale = 1)
+```
+
+```{r Grafico_CFam, include=TRUE, echo=FALSE, results='asis', fig.keep='all', out.width = '100%', fig.align="center"}
+
+if (is_latex_output() == TRUE) {
+    include_graphics( paste0("Grafico_CFam.png"))    
+} else {
+    Grafico_CFam
+}
+```
+
+
+## Consumo do Governo
+
+```{r}
+Grafico_CGOv <- grafico_cecon(Trim_Trim_Anterior_xts$`Consumo do Governo`[Recorte_Grafico], 
+                              tipo_grafico = Template_Grafico)
+# plotly_IMAGE(x = Grafico_CGOv, # Dosar uso
+#              out_file = paste0("Grafico_CGov.png"),
+#              format = "png",
+#              scale = 1)
+```
+
+```{r Grafico_CGov, include=TRUE, echo=FALSE, results='asis', fig.keep='all', out.width = '100%', fig.align="center"}
+
+if (is_latex_output() == TRUE) {
+    include_graphics( paste0("Grafico_CGov.png"))    
+} else {
+    Grafico_CGOv
+}
+```
+
+## Formação Bruta de Capital Fixo
+
+```{r}
+Grafico_FBCF <- grafico_cecon(Trim_Trim_Anterior_xts$FBCF[Recorte_Grafico], 
+                              tipo_grafico = Template_Grafico)
+# plotly_IMAGE(x = Grafico_FBCF, # Dosar uso
+#              out_file = paste0("Grafico_FBCF.png"),
+#              format = "png",
+#              scale = 1)
+```
+
+```{r Grafico_FBCF, include=TRUE, echo=FALSE, results='asis', fig.keep='all', out.width = '100%', fig.align="center"}
+
+if (is_latex_output() == TRUE) {
+    include_graphics( paste0("Grafico_FBCF.png"))    
+} else {
+    Grafico_FBCF
+}
+```
+
+
+
+## Exportação
+
+```{r}
+Grafico_Export <- grafico_cecon(Trim_Trim_Anterior_xts$Exportacao[Recorte_Grafico], 
+                                tipo_grafico = Template_Grafico)
+# plotly_IMAGE(x = Grafico_Export, # Dosar uso
+#              out_file = paste0("Grafico_Export.png"),
+#              format = "png",
+#              scale = 1)
+```
+
+```{r Grafico_Export, include=TRUE, echo=FALSE, results='asis', fig.keep='all', out.width = '100%', fig.align="center"}
+
+if (is_latex_output() == TRUE) {
+    include_graphics( paste0("Grafico_Export.png"))    
+} else {
+    Grafico_Export
+}
+```
+
+## Importação
+
+```{r}
+Grafico_Import <- grafico_cecon(Trim_Trim_Anterior_xts$Importacao[Recorte_Grafico], 
+                                tipo_grafico = Template_Grafico)
+# plotly_IMAGE(x = Grafico_Import, # Dosar uso
+#              out_file = paste0("Grafico_Import.png"),
+#              format = "png",
+#              scale = 1)
+```
+
+```{r Grafico_Import, include=TRUE, echo=FALSE, results='asis', fig.keep='all', out.width = '100%', fig.align="center"}
+
+if (is_latex_output() == TRUE) {
+    include_graphics( paste0("Grafico_Import.png"))    
+} else {
+    Grafico_Import
+}
+```
+
+## Saldo da Balança Comercial
+
+```{r}
+Bal_Comerc <- Trim_Trim_Anterior_xts$Exportacao - Trim_Trim_Anterior_xts$Importacao
+Bal_Comerc_xts <- xts(x = Bal_Comerc,
+                      order.by = index(Trim_Trim_Anterior_xts))
+Grafico_Bal_Comerc <- grafico_cecon(Bal_Comerc_xts[Recorte_Grafico],
+                                    tipo_grafico = Template_Grafico)
+# plotly_IMAGE(x = Grafico_Bal_Comerc, # Dosar uso
+#              out_file = paste0("Grafico_Bal_Comerc.png"),
+#              format = "png",
+#              scale = 1)
+```
+
+```{r Grafico_Bal_Comerc, include=TRUE, echo=FALSE, results='asis', fig.keep='all', out.width = '100%', fig.align="center"}
+
+if (is_latex_output() == TRUE) {
+    include_graphics( paste0("Grafico_Bal_Comerc.png"))    
+} else {
+    Grafico_Bal_Comerc
+}
+```
+
+[^1]: Variação percentual calculada a partir da série encadeada a preços de 1995 com ajuste sazonal.
+
+[^2]: Variação percentual calculada a partir da série encadeada a preços de 1995 com ajuste sazonal.
+
+[^3]: Variação percentual calculada a partir da série encadeada a preços de 1995 com ajuste sazonal.
+
+[^4]: Variação percentual calculada a partir da série encadeada a preços de 1995 com ajuste sazonal.
+
+# Todo
+
+## TODOs
+
+
+- Checar taxa de decomposição
+- Substituir na pasta 20182TPIB
+- Criar pasta github
+- Criar instruções de uso
